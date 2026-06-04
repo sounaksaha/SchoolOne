@@ -12,11 +12,16 @@ const createDriver = asyncHandler(async (req, res) => {
 });
 
 const getDriverList = asyncHandler(async (req, res) => {
-  const result = await service.getDriverList(req.user.schoolCode);
+  const result = await service.getDriverList({
+    schoolCode: req.user.schoolCode,
+    query: req.query,
+  });
 
   res.json({
     success: true,
-    data: result,
+    message: 'Driver list fetched successfully',
+    data: result.data,
+    pagination: result.pagination,
   });
 });
 

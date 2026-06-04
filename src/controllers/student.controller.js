@@ -12,11 +12,16 @@ const createStudent = asyncHandler(async (req, res) => {
 });
 
 const getStudentList = asyncHandler(async (req, res) => {
-  const result = await service.getStudentList(req.user.schoolCode);
+  const result = await service.getStudentList({
+    schoolCode: req.user.schoolCode,
+    query: req.query,
+  });
 
   res.json({
     success: true,
-    data: result,
+    message: 'Student list fetched successfully',
+    data: result.data,
+    pagination: result.pagination,
   });
 });
 

@@ -132,13 +132,97 @@ const createStudent = async payload => {
   };
 };
 
-const getStudentList = async schoolCode => {
-  return Student.find({
+const getStudentList = async ({schoolCode, query}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    className,
+    section,
+    status,
+    academicYear,
+    gender,
+    transportRequired,
+  } = query;
+
+  const pageNumber = Math.max(Number(page), 1);
+  const limitNumber = Math.max(Number(limit), 1);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const filter = {
     schoolCode: schoolCode.toUpperCase(),
-  })
-    .populate('user', '-password')
-    .populate('parent.user', '-password')
-    .sort({createdAt: -1});
+  };
+
+  if (className) {
+    filter.className = className;
+  }
+
+  if (section) {
+    filter.section = section;
+  }
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (academicYear) {
+    filter.academicYear = academicYear;
+  }
+
+  if (gender) {
+    filter.gender = gender;
+  }
+
+  if (transportRequired === 'true') {
+    filter['transport.required'] = true;
+  }
+
+  if (transportRequired === 'false') {
+    filter['transport.required'] = false;
+  }
+
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+
+    filter.$or = [
+      {studentName: searchRegex},
+      {admissionNo: searchRegex},
+      {rollNumber: searchRegex},
+      {className: searchRegex},
+      {section: searchRegex},
+      {academicYear: searchRegex},
+      {'parent.name': searchRegex},
+      {'parent.phone': searchRegex},
+      {'parent.email': searchRegex},
+      {'transport.routeName': searchRegex},
+      {'transport.pickupPoint': searchRegex},
+    ];
+  }
+
+  const [students, total] = await Promise.all([
+    Student.find(filter)
+      .populate('user', '-password')
+      .populate('parent.user', '-password')
+      .sort({createdAt: -1})
+      .skip(skip)
+      .limit(limitNumber),
+
+    Student.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limitNumber);
+
+  return {
+    data: students,
+    pagination: {
+      total,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages,
+      hasNextPage: pageNumber < totalPages,
+      hasPrevPage: pageNumber > 1,
+    },
+  };
 };
 
 module.exports = {

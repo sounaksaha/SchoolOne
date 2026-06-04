@@ -72,12 +72,85 @@ const createDriver = async payload => {
   };
 };
 
-const getDriverList = async schoolCode => {
-  return Driver.find({
+const getDriverList = async ({schoolCode, query}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status,
+    routeName,
+    vehicleNumber,
+    appLoginEnabled,
+  } = query;
+
+  const pageNumber = Math.max(Number(page), 1);
+  const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const filter = {
     schoolCode: schoolCode.toUpperCase(),
-  })
-    .populate('user', '-password')
-    .sort({createdAt: -1});
+  };
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (routeName) {
+    filter.routeName = routeName;
+  }
+
+  if (vehicleNumber) {
+    filter.vehicleNumber = vehicleNumber;
+  }
+
+  if (appLoginEnabled === 'true') {
+    filter.appLoginEnabled = true;
+  }
+
+  if (appLoginEnabled === 'false') {
+    filter.appLoginEnabled = false;
+  }
+
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+
+    filter.$or = [
+      {name: searchRegex},
+      {employeeId: searchRegex},
+      {phone: searchRegex},
+      {email: searchRegex},
+      {licenseNumber: searchRegex},
+      {emergencyContact: searchRegex},
+      {vehicleNumber: searchRegex},
+      {routeName: searchRegex},
+      {joiningDate: searchRegex},
+      {status: searchRegex},
+    ];
+  }
+
+  const [drivers, total] = await Promise.all([
+    Driver.find(filter)
+      .populate('user', '-password')
+      .sort({createdAt: -1})
+      .skip(skip)
+      .limit(limitNumber),
+
+    Driver.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limitNumber);
+
+  return {
+    data: drivers,
+    pagination: {
+      total,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages,
+      hasNextPage: pageNumber < totalPages,
+      hasPrevPage: pageNumber > 1,
+    },
+  };
 };
 
 module.exports = {
